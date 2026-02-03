@@ -24,3 +24,7 @@
 - **WebP Quality**: Adjust the compression level (0.1 to 1.0).
 - **Auto-Create Journal**: If enabled, the module will create the target journal if it doesn't already exist.
 
+Discord: https://discord.gg/fycwH79s2y
+Website: www.wgtngm.com
+Patreon: www.patreon.com/wgtngm
+Ko-fi: www.ko-fi.com/wgtngm
