@@ -16,6 +16,7 @@ export function registerSettings() {
         scope: 'world',
         config: true,
         type: String,
+        filePicker: "folder",
         default: 'uploads/{worldId}/webp-images',
         requiresReload: false
     });
