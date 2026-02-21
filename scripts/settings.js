@@ -69,6 +69,7 @@ export function registerSettings() {
         default: true,
         requiresReload: false
     });
+
 }
 
 /**

@@ -95,46 +95,90 @@ async function processBatch(files) {
 }
 
 /**
- * Handle drop events on the document
- * @param {DragEvent} event - The drop event
+ * Handle file drops on the canvas hook
+ * @param {Canvas} canvas - Foundry canvas instance
+ * @param {object} point - Canvas drop point
+ * @param {DragEvent} event - Native drop event
  */
-async function handleDrop(event) {
-    
-    const dataTransfer = event.dataTransfer;
-    if (!dataTransfer?.files?.length) return;
+function handleCanvasDrop(canvas, point, event) {
+    if (
+        !game.user.isGM ||
+        !event.dataTransfer?.files?.length ||
+        !foundry.utils.isEmpty(foundry.applications.ux.TextEditor.implementation.getDragEventData(event))
+    ) {
+        return;
+    }
 
-    
-    const imageFiles = Array.from(dataTransfer.files).filter(isSupportedImage);
+    const imageFiles = Array.from(event.dataTransfer.files).filter(isSupportedImage);
+    if (!imageFiles.length) return;
 
-    if (imageFiles.length === 0) return;
-
-    
     event.preventDefault();
     event.stopPropagation();
 
-    
-    await processBatch(imageFiles);
+    processBatch(imageFiles).catch((error) => {
+        console.error('Mini Uploader: Batch processing failed', error);
+    });
+
+    return false;
 }
 
 /**
- * Setup the drop event listener
+ * Ensure Mini Uploader drop hook executes first so returning false can short-circuit other handlers.
  */
-function setupDropListener() {
-    
-    document.addEventListener('drop', handleDrop, { capture: true });
+function prioritizeMiniUploaderDropHook() {
+    const hookStore = Hooks.events?.dropCanvasData;
+    if (!hookStore) return;
 
-    
-    document.addEventListener('dragover', (event) => {
-        const dataTransfer = event.dataTransfer;
-
-        
-        if (dataTransfer?.types?.includes('Files')) {
-            
-            event.preventDefault();
+    if (Array.isArray(hookStore)) {
+        const idx = hookStore.findIndex((entry) => (entry?.fn ?? entry) === handleCanvasDrop);
+        if (idx > 0) {
+            const [entry] = hookStore.splice(idx, 1);
+            hookStore.unshift(entry);
         }
-    }, { capture: true });
+        return;
+    }
 
-    console.log('Mini Uploader: Drop listener initialized');
+    if (hookStore instanceof Set) {
+        let target = null;
+        const others = [];
+        for (const entry of hookStore) {
+            if (!target && (entry?.fn ?? entry) === handleCanvasDrop) target = entry;
+            else others.push(entry);
+        }
+        if (target) Hooks.events.dropCanvasData = new Set([target, ...others]);
+        return;
+    }
+
+    if (hookStore instanceof Map) {
+        let targetKey = null;
+        let targetValue = null;
+        const others = [];
+        for (const [key, value] of hookStore.entries()) {
+            if (targetKey == null && (value?.fn ?? value) === handleCanvasDrop) {
+                targetKey = key;
+                targetValue = value;
+            } else {
+                others.push([key, value]);
+            }
+        }
+        if (targetKey != null) Hooks.events.dropCanvasData = new Map([[targetKey, targetValue], ...others]);
+        return;
+    }
+
+    if (typeof hookStore === 'object') {
+        let targetKey = null;
+        let targetValue = null;
+        const others = {};
+        for (const [key, value] of Object.entries(hookStore)) {
+            if (targetKey == null && (value?.fn ?? value) === handleCanvasDrop) {
+                targetKey = key;
+                targetValue = value;
+            } else {
+                others[key] = value;
+            }
+        }
+        if (targetKey != null) Hooks.events.dropCanvasData = { [targetKey]: targetValue, ...others };
+    }
 }
 
 /**
@@ -150,5 +194,14 @@ Hooks.once('init', () => {
  */
 Hooks.once('ready', () => {
     console.log('Mini Uploader: Ready');
-    setupDropListener();
+    Hooks.on('dropCanvasData', handleCanvasDrop);
+    prioritizeMiniUploaderDropHook();
+    console.log('Mini Uploader: dropCanvasData hook initialized');
+    setTimeout(() => {
+        prioritizeMiniUploaderDropHook();
+    }, 250);
+});
+
+Hooks.on('canvasReady', () => {
+    prioritizeMiniUploaderDropHook();
 });
