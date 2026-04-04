@@ -1,6 +1,6 @@
 /**
  * Mini Uploader - File Uploader
- * Handles uploading WebP files to Foundry/Forge VTT
+ * Handles uploading files to Foundry/Forge VTT
  */
 
 import { getSetting } from './settings.js';
@@ -60,15 +60,16 @@ async function ensureDirectoryExists(folderPath) {
 }
 
 /**
- * Upload a WebP blob to Foundry's data storage
- * @param {Blob} blob - The WebP blob to upload
+ * Upload a file/blob to Foundry's data storage
+ * @param {File|Blob} fileOrBlob - The file or blob to upload
  * @param {string} filename - Desired filename
- * @param {string} folderPath - Target folder path
+ * @param {Object} options - Upload options
+ * @param {string|null} options.folderPath - Target folder path
+ * @param {string|null} options.mimeType - Optional MIME type override
  * @returns {Promise<string>} The path to the uploaded file
  */
-export async function uploadWebP(blob, filename, folderPath = null) {
-    
-    let targetFolder = folderPath || getSetting('uploadFolder');
+export async function uploadFile(fileOrBlob, filename, options = {}) {
+    let targetFolder = options.folderPath || getSetting('uploadFolder');
 
     
     if (targetFolder.includes('{worldId}')) {
@@ -81,8 +82,16 @@ export async function uploadWebP(blob, filename, folderPath = null) {
         throw new Error(`Could not create upload directory: ${targetFolder}`);
     }
 
-    
-    const file = new File([blob], filename, { type: 'image/webp' });
+    const resolvedMimeType = options.mimeType || fileOrBlob.type || 'application/octet-stream';
+    const resolvedFilename = filename || fileOrBlob.name || `upload_${Date.now()}`;
+    const shouldReuseOriginalFile =
+        fileOrBlob instanceof File &&
+        fileOrBlob.name === resolvedFilename &&
+        (!options.mimeType || options.mimeType === fileOrBlob.type);
+
+    const file = shouldReuseOriginalFile
+        ? fileOrBlob
+        : new File([fileOrBlob], resolvedFilename, { type: resolvedMimeType });
 
     
     
@@ -110,4 +119,18 @@ export async function uploadWebP(blob, filename, folderPath = null) {
         }
         throw error;
     }
+}
+
+/**
+ * Upload a WebP blob to Foundry's data storage
+ * @param {Blob} blob - The WebP blob to upload
+ * @param {string} filename - Desired filename
+ * @param {string} folderPath - Target folder path
+ * @returns {Promise<string>} The path to the uploaded file
+ */
+export async function uploadWebP(blob, filename, folderPath = null) {
+    return uploadFile(blob, filename, {
+        folderPath,
+        mimeType: 'image/webp'
+    });
 }

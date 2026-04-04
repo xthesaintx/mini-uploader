@@ -6,7 +6,7 @@
 /**
  * Supported image MIME types for conversion
  */
-const SUPPORTED_TYPES = [
+const SUPPORTED_IMAGE_TYPES = [
     'image/png',
     'image/jpeg',
     'image/jpg',
@@ -16,14 +16,43 @@ const SUPPORTED_TYPES = [
     'image/webp' 
 ];
 
+const PASSTHROUGH_MIME_TYPES = [
+    'video/webm',
+    'video/mp4',
+    'video/x-msvideo',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/x-mpeg-3'
+];
+
+const PASSTHROUGH_EXTENSION_PATTERN = /\.(webm|avi|mp4|mp3)$/i;
+
 /**
  * Check if a file is a supported image type
  * @param {File} file - The file to check
  * @returns {boolean} True if this is a supported image type
  */
 export function isSupportedImage(file) {
-    return SUPPORTED_TYPES.includes(file.type) ||
+    return SUPPORTED_IMAGE_TYPES.includes(file.type) ||
         /\.(png|jpe?g|gif|bmp|tiff?|webp)$/i.test(file.name);
+}
+
+/**
+ * Check if a file should bypass conversion and upload as-is
+ * @param {File} file - The file to check
+ * @returns {boolean} True if this is a passthrough media file
+ */
+export function isPassthroughUpload(file) {
+    return PASSTHROUGH_MIME_TYPES.includes(file.type) || PASSTHROUGH_EXTENSION_PATTERN.test(file.name);
+}
+
+/**
+ * Check if a file can be handled by this module
+ * @param {File} file - The file to check
+ * @returns {boolean} True for supported image files or passthrough uploads
+ */
+export function isSupportedUpload(file) {
+    return isSupportedImage(file) || isPassthroughUpload(file);
 }
 
 /**

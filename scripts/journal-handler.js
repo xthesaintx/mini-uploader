@@ -43,6 +43,7 @@ export async function getOrCreateJournal() {
  * @param {string} imagePath - Path to the uploaded image
  * @param {string} imageName - Name for the journal page
  * @param {Object} options - Additional options
+ * @param {'image'|'video'} options.pageType - Journal page type
  * @param {number} options.width - Image width in pixels
  * @param {number} options.height - Image height in pixels
  * @returns {Promise<JournalEntryPage|null>} The created page, or null on failure
@@ -60,16 +61,18 @@ export async function addImagePageToJournal(imagePath, imageName, options = {}) 
     }
 
     try {
+        const pageType = options.pageType === 'video' ? 'video' : 'image';
         const pageData = {
             name: imageName,
-            type: 'image',
-            src: imagePath,
-            image: {
-                caption: ''
-            }
+            type: pageType,
+            src: imagePath
         };
 
-        if (options.width && options.height) {
+        if (pageType === 'image') {
+            pageData.image = { caption: '' };
+        }
+
+        if (pageType === 'image' && options.width && options.height) {
             pageData.image.width = options.width;
             pageData.image.height = options.height;
         }

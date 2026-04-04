@@ -1,33 +1,36 @@
 /**
  * Mini Uploader - Main Entry Point
- * Intercepts image drops and coordinates conversion, upload, and journal creation
+ * Intercepts file drops and coordinates conversion, upload, and journal creation
  */
 
 import { registerSettings, getSetting } from './settings.js';
-import { convertToWebP, isSupportedImage, generateWebPFilename } from './webp-converter.js';
-import { uploadWebP } from './uploader.js';
+import { convertToWebP, isSupportedUpload, isPassthroughUpload, generateWebPFilename } from './webp-converter.js';
+import { uploadFile, uploadWebP } from './uploader.js';
 import { addImagePageToJournal } from './journal-handler.js';
 
 const MODULE_ID = 'mini-uploader';
 
 /**
- * Process a dropped image file
- * @param {File} file - The dropped image file
+ * Process a dropped file
+ * @param {File} file - The dropped file
  * @returns {Promise<{success: boolean, name: string, path?: string, error?: string}>}
  */
-async function processDroppedImage(file) {
+async function processDroppedFile(file) {
     const quality = getSetting('webpQuality');
 
     try {
-        
-        const { blob, width, height } = await convertToWebP(file, quality);
+        const pageName = file.name.replace(/\.[^.]+$/, '');
 
-        
+        if (isPassthroughUpload(file)) {
+            const uploadedPath = await uploadFile(file, file.name);
+            await addImagePageToJournal(uploadedPath, pageName, { pageType: 'video' });
+            return { success: true, name: file.name, path: uploadedPath };
+        }
+
+        const { blob, width, height } = await convertToWebP(file, quality);
         const filename = generateWebPFilename(file.name);
         const uploadedPath = await uploadWebP(blob, filename);
 
-        
-        const pageName = file.name.replace(/\.[^.]+$/, ''); 
         await addImagePageToJournal(uploadedPath, pageName, { width, height });
 
         return { success: true, name: file.name, path: uploadedPath };
@@ -49,7 +52,7 @@ async function processBatch(files) {
 
     
     if (showNotifications && total > 1) {
-        ui.notifications.info(`Mini Uploader: Processing ${total} images...`);
+        ui.notifications.info(`Mini Uploader: Processing ${total} files...`);
     }
 
     for (let i = 0; i < files.length; i++) {
@@ -60,7 +63,7 @@ async function processBatch(files) {
             ui.notifications.info(`Uploading ${i + 1}/${total}: ${file.name}`, { permanent: false });
         }
 
-        const result = await processDroppedImage(file);
+        const result = await processDroppedFile(file);
 
         if (result.success) {
             results.success++;
@@ -79,10 +82,10 @@ async function processBatch(files) {
     
     if (showNotifications && total > 1) {
         if (results.failed === 0) {
-            ui.notifications.info(`Mini Uploader: Successfully uploaded ${results.success} images`);
+            ui.notifications.info(`Mini Uploader: Successfully uploaded ${results.success} files`);
         } else {
             ui.notifications.warn(
-                `Mini Uploader: Uploaded ${results.success}/${total} images. Failed: ${results.errors.join(', ')}`
+                `Mini Uploader: Uploaded ${results.success}/${total} files. Failed: ${results.errors.join(', ')}`
             );
         }
     } else if (showNotifications && results.failed > 0) {
@@ -109,13 +112,13 @@ function handleCanvasDrop(canvas, point, event) {
         return;
     }
 
-    const imageFiles = Array.from(event.dataTransfer.files).filter(isSupportedImage);
-    if (!imageFiles.length) return;
+    const supportedFiles = Array.from(event.dataTransfer.files).filter(isSupportedUpload);
+    if (!supportedFiles.length) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    processBatch(imageFiles).catch((error) => {
+    processBatch(supportedFiles).catch((error) => {
         console.error('Mini Uploader: Batch processing failed', error);
     });
 

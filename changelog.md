@@ -1,4 +1,8 @@
-# v1.1
+# 1.2
+- v14 checks
+- pass through uploads for .webm .avi .mp4 .mp3
+
+# 1.1
 
 - Switched drag/drop handling from document listeners to Foundry `dropCanvasData` hook.
 - Removed custom `document` `drop` and `dragover` listeners.
