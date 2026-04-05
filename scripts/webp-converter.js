@@ -4,9 +4,9 @@
  */
 
 /**
- * Supported image MIME types for conversion
+ * Fallback image MIME types when Foundry extension maps are unavailable.
  */
-const SUPPORTED_IMAGE_TYPES = [
+const FALLBACK_IMAGE_TYPES = [
     'image/png',
     'image/jpeg',
     'image/jpg',
@@ -16,16 +16,28 @@ const SUPPORTED_IMAGE_TYPES = [
     'image/webp' 
 ];
 
-const PASSTHROUGH_MIME_TYPES = [
-    'video/webm',
-    'video/mp4',
-    'video/x-msvideo',
-    'audio/mpeg',
-    'audio/mp3',
-    'audio/x-mpeg-3'
-];
+const FALLBACK_IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|gif|bmp|tiff?|webp)$/i;
 
-const PASSTHROUGH_EXTENSION_PATTERN = /\.(webm|avi|mp4|mp3)$/i;
+function getExtension(filename = '') {
+    const match = /\.([^.]+)$/.exec(filename);
+    return match ? match[1].toLowerCase() : '';
+}
+
+function getConstExtensionMap(mapName) {
+    if (typeof CONST === 'undefined' || !CONST[mapName]) return {};
+    return CONST[mapName];
+}
+
+function hasExtension(extensionMap, extension) {
+    return Boolean(
+        extension &&
+        Object.prototype.hasOwnProperty.call(extensionMap, extension)
+    );
+}
+
+function hasMimeType(extensionMap, mimeType) {
+    return Boolean(mimeType && Object.values(extensionMap).includes(mimeType));
+}
 
 /**
  * Check if a file is a supported image type
@@ -33,8 +45,13 @@ const PASSTHROUGH_EXTENSION_PATTERN = /\.(webm|avi|mp4|mp3)$/i;
  * @returns {boolean} True if this is a supported image type
  */
 export function isSupportedImage(file) {
-    return SUPPORTED_IMAGE_TYPES.includes(file.type) ||
-        /\.(png|jpe?g|gif|bmp|tiff?|webp)$/i.test(file.name);
+    const imageExtensions = getConstExtensionMap('IMAGE_FILE_EXTENSIONS');
+    const extension = getExtension(file.name);
+
+    return hasExtension(imageExtensions, extension) ||
+        hasMimeType(imageExtensions, file.type) ||
+        FALLBACK_IMAGE_TYPES.includes(file.type) ||
+        FALLBACK_IMAGE_EXTENSION_PATTERN.test(file.name);
 }
 
 /**
@@ -43,7 +60,14 @@ export function isSupportedImage(file) {
  * @returns {boolean} True if this is a passthrough media file
  */
 export function isPassthroughUpload(file) {
-    return PASSTHROUGH_MIME_TYPES.includes(file.type) || PASSTHROUGH_EXTENSION_PATTERN.test(file.name);
+    const passthroughExtensions = {
+        ...getConstExtensionMap('VIDEO_FILE_EXTENSIONS'),
+        ...getConstExtensionMap('AUDIO_FILE_EXTENSIONS')
+    };
+    const extension = getExtension(file.name);
+
+    return hasExtension(passthroughExtensions, extension) ||
+        hasMimeType(passthroughExtensions, file.type);
 }
 
 /**

@@ -1,6 +1,6 @@
 # 1.2
 - v14 checks
-- pass through uploads for .webm .avi .mp4 .mp3
+- pass through uploads for audio and video
 
 # 1.1
 
