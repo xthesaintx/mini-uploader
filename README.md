@@ -1,4 +1,7 @@
-# Mini Uploader (Foundry VTT v13)
+# NOTE
+This is no longer being hosted on GitHub and there is now a centralised issue tracking repo [here](https://github.com/xthesaintx/wgtngm/issues)
+
+# Mini Uploader
 
 **Mini Uploader** is a lean, native-HTML Foundry VTT v13 module that streamlines your asset workflow. Drag images directly from your computer (Finder/Explorer) onto the Foundry window to automatically convert them to WebP, upload them to your server, and add them as pages to a journal.
 
